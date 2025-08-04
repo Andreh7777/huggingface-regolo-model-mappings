@@ -32,7 +32,7 @@ class HFInferenceProviderClient {
   private hfToken;
 
   constructor(options: HFInferenceProviderOptions = {}) {
-    const { baseUrl = 'https://huggingface.co', provider = 'replicate' } = options;
+    const { baseUrl = 'https://huggingface.co', provider = 'regolo' } = options;
     this.baseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
     this.provider = provider;
     const hfToken = process.env.HF_TOKEN;
@@ -117,7 +117,7 @@ class HFInferenceProviderClient {
 
   async listMappingIds(): Promise<string[]> {
     const mappings = await this.listMappingItems();
-    return Object.values(mappings).flatMap(taskMappings => 
+    return Object.values(mappings).flatMap(taskMappings =>
       Object.keys(taskMappings)
     );
   }

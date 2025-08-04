@@ -3,7 +3,9 @@ import { type InferenceTag, inferenceTags } from './tags.js';
 
 import HFInferenceProviderClient from './hf.js';
 
-const hf = new HFInferenceProviderClient({provider: 'replicate'});
+import { getModelId } from '../script/ModelName_to_ID';
+
+const hf = new HFInferenceProviderClient({provider: 'regolo'});
 
 // Only some tasks are supported by HF's Inference Providers API
 const supportedTasks = [
@@ -29,20 +31,25 @@ const supportedTasks = [
     'zero-shot-classification',
 ];
 
-// Hit the Replicate API to get the warm/cold status for the given model
+// Hit the Regolo API to get the warm/cold status for the given model
 const getModelStatus = async (model: InferenceModel) => {
-	try {
-		const [modelName, _modelVersion] = model.providerModel.split(":");
-		const modelUrl = `https://replicate.com/${modelName}/status`;
+  try {
+    const [modelName] = model.providerModel.split(":");
+    const id = await getModelId(modelName);
 
-		const response = await fetch(modelUrl);
-		const { status } = await response.json() as { status: string };
+    const res = await fetch(
+      `https://api.regolo.ai/v1/model/info?regolo_model_id=${id}`,
+      { headers: { Authorization: `Bearer ${process.env.REGOLO_API_KEY}` } }
+    );
 
-		return status === 'online' ? 'live' : 'staging';
-	} catch {
-		return 'staging';
-	}
+    // Se la richiesta ha successo (HTTP 200) -> live
+    return res.ok ? 'live' : 'staging';
+  } catch {
+    // Se la richiesta fallisce (es. rete, 404, ecc.), fallback su staging
+    return 'staging';
+  }
 };
+
 
 // Hit the Hugging Face API to get the Task™ type for the given model,
 // e.g. "text-to-image", "image-to-image", "text-to-video", etc.
@@ -52,25 +59,25 @@ const getModelTask = async (model: InferenceModel) => {
 	return data.pipeline_tag;
 };
 
-// Get Replicate model warm/cold statuses and Hugging Face tasks in parallel
+// Get RegoloAI model warm/cold statuses and Hugging Face tasks in parallel
 const [statuses, tasks] = await Promise.all([
 	Promise.all(inferenceModels.map(getModelStatus)),
 	Promise.all(inferenceModels.map(getModelTask))
 ]);
 
 // Set status and task (unless they're already manually defined on the model object)
-const replicateModels = inferenceModels.map((model, index) => ({
+const regoloModels = inferenceModels.map((model, index) => ({
     ...model,
     status: model.status ?? statuses[index],
     task: model.task ?? tasks[index],
 }));
 
-console.log("\n\nReplicate model mappings:");
-console.log(replicateModels);
+console.log("\n\nRegoloAI model mappings:");
+console.log(regoloModels);
 
 // Filter out models with unsupported task types before registering them
-const unsupportedModels = replicateModels.filter(model => !supportedTasks.includes(model.task ?? ''));
-const supportedModels = replicateModels.filter(model => supportedTasks.includes(model.task ?? ''));
+const unsupportedModels = regoloModels.filter(model => !supportedTasks.includes(model.task ?? ''));
+const supportedModels = regoloModels.filter(model => supportedTasks.includes(model.task ?? ''));
 
 if (unsupportedModels.length > 0) {
     console.log("\n\nDiscarding models with unsupported task types:");
@@ -112,7 +119,7 @@ if (existingMappings.length > 0) {
 }
 
 // Handle tag mappings
-console.log("\n\nReplicate tag mappings:");
+console.log("\n\nRegoloAI tag mappings:");
 console.log(inferenceTags);
 
 // Register tag mappings

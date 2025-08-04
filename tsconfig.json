@@ -12,7 +12,8 @@
 		"declaration": true,
 		"declarationMap": true,
 		"outDir": "./dist",
-		"resolveJsonModule": true
+		"resolveJsonModule": true,
+		"allowJs": true
 	},
 	"include": ["src", "test"],
 	"exclude": ["dist"]

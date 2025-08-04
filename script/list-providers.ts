@@ -9,7 +9,8 @@ const providers = [
     'novita',
     'replicate',
     'sambanova',
-    'together'
+    'together',
+    'regolo',
 ] as const;
 
 console.log(JSON.stringify(providers, null, 2)); 
